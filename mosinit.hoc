@@ -1,0 +1,97 @@
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// This simulation was used in an article in press at Neural Computation
+//  Citation: Neymotin SA, Chadderdon GL, Kerr CC, Francis JT, Lytton WW (2013).
+//  Reinforcement learning of 2-joint  virtual arm reaching in a computer model of sensorimotor cortex.
+//
+// For questions/comments on the simulation contact Sam Neymotin (email: samn at neurosim dot downstate dot edu)
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+xopen("./setup.hoc")
+xopen("./nrnoc.hoc")
+load_file("init.hoc")
+load_file("nqsnet.hoc")
+load_file("network.hoc")
+load_file("params.hoc")
+load_file("stim.hoc")
+load_file("sense.hoc")
+load_file("run.hoc")
+load_file("nload.hoc")
+load_file("basestdp.hoc")
+load_file("arm.hoc")
+
+objref tnq
+tnq = new NQS("trainedplast.nqs") // stored weights from training
+tstop = 15e3 // 15 second reach
+
+//* settrained - set weights to learned values
+proc settrained () { localobj nq
+  resetplast_INTF6=0
+  setplastnq(tnq,col[0]) // this loads the learned weights 
+  print "loaded trained weights."
+}
+
+//* setnaive - reset the weights to values prior to training
+proc setnaive () {
+  resetplast_INTF6=1
+  print "set naive weights"
+}
+
+//* drawTrajTarg - draw trajectory from run + start + target
+proc drawTrajTarg () { local xt,yt
+  g=Graph[0]
+  g.erase()
+  xt=tPos.x yt=tPos.y
+  {rotArmTo(sAng[0],sAng[1]) tPos.x=armPos.x tPos.y=armPos.y drtarg(9)}
+  tPos.x=xt tPos.y=yt
+  {gvt=gvmarkflag gvmarkflag=0 if(nqa==nil) return}
+  {tPos.x=xt tPosy=yt}
+  {rotArmTo(tAng[0],tAng[1]) tPos.x=armPos.x tPos.y=armPos.y drarm(0) drtarg(1)}
+  nqa.gr("y","x",0,1,1)
+  g.size(-3,3,-3,3)
+}
+
+//* run simulation and display output
+proc mydemorun () {
+  myrun()
+  drawTrajTarg() // draw
+  {drit(0,15,1) rasterlines(1)}// draw raster
+  g[1].size(0,tstop,0,col.allcells+col.numc[DP]) // size the graph
+}
+
+//* run trained network, display output
+proc trainedrun () {
+  settrained()
+  mydemorun()
+}
+
+//* run naive network, display output
+proc naiverun () {
+  setnaive() 
+  mydemorun()
+}
+
+objref hb
+
+//* make the gui
+proc setgui () { local i
+  {hb=new HBox() hb.intercept(1)}
+  xpanel("Reinforcement learning of 2-joint virtual arm reaching in a computer model of sensorimotor cortex")
+  xlabel("Simulation from: Reinforcement learning")
+  xlabel("of 2-joint virtual arm reaching in a")
+  xlabel("computer model of sensorimotor cortex")
+  xlabel("by Neymotin et al.")
+  xlabel("Neural Computation, 2013 (in press)")
+  xlabel("For questions/comments contact Sam Neymotin")
+  xlabel("email: samn at neurosim dot downstate dot edu")
+  xlabel(" ")
+  xbutton("Run trained network","trainedrun()")
+  xbutton("Run naive network", "naiverun()")
+  xbutton("Quit","quit()")
+  xpanel()
+  for i=0,1 g[i]=new Graph()
+  {hb.intercept(0) hb.map()}
+}
+setgui()
+tstop=15e3

@@ -1,0 +1,60 @@
+// $Id: geom.hoc,v 1.9 2012/05/22 15:10:53 samn Exp $
+
+declare("armLen","d[2]") // length of each arm segment -- fixed throughout sim
+declare("MLen","d[4]") // length of each muscle -- varies throughout sim
+declare("MFctr",1)
+declare("minDPr",0,"maxDPr",1)
+
+begintemplate DPC
+
+public soma,drspk,id,type,subtype,xloc,yloc,zloc,mlenmin,mlenmax
+public setmlenrange,updatedrive
+external armLen,MLen,MFctr,minDPr,maxDPr
+objref drspk
+double id[1],type[1],subtype[1],xloc[1],yloc[1],zloc[1],mlenmin[1],mlenmax[1]
+
+create soma[1]
+
+proc init () {
+  if(numarg()>0) id=$1
+  if(numarg()>1) type=$2
+  initsoma()
+}
+
+proc initsoma () {
+  soma {
+    diam = 30
+    L = 30
+    nseg = 1
+    Ra = 1
+    drspk = new DRSPK(0.5)
+    insert pas    
+    e_pas = 0
+  }
+}
+
+proc setmlenrange () {
+  mlenmin = $1
+  mlenmax = $2
+}
+
+proc updatedrive () { local mlen
+  // The first argument is the relevant muscle length.  If none is provided,
+  // the default is the current muscle length.
+  if (numarg() > 0) mlen = $1 else mlen = MLen[zloc] 
+
+  // Set the drive between minDPr and maxDPr where muscle length divided by the
+  // arm length for the corresponding arm segment sets distance from the 
+  // minDPr baseline firing rate.
+  // drspk.drive = minDPr + (maxDPr-minDPr) * MFctr * MLen[zloc] / armLen[zloc/2]
+
+  // If the muscle length associated with the cell is within the range,
+  // then set maximal drive, else set minimal drive.
+  if ((mlen >= mlenmin) && (mlen <= mlenmax)) {
+    drspk.drive = maxDPr
+  } else {
+    drspk.drive = minDPr
+  }
+}
+
+endtemplate DPC
