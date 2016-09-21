@@ -26,6 +26,8 @@ VERBATIM
 
 static int ctt(unsigned int, char**);
 static int setdvi2(double*,double*,char*,int,int,double*,double*);
+static int setdvi3(double*,double*,char*,int,double*,double*);
+void freesywv();
 // Definitions for synaptic scaling procs
 void raise_activity_sensor(double time);
 void decay_activity_sensor(double time);
@@ -376,7 +378,7 @@ CONSTRUCTOR {
     //     THE PARAMETERS IN THIS 'BLOCK' ARE ASSOCIATED WITH HOMEOSTATIC SYNAPTIC SCAING
     ip->activity = 0; // Sensor for this cell's recent activity (default 0MHz i.e. cycles per ms)
     ip->max_err = 0; // Max error value
-    ip->max_scale = 4; // Max scaling factor
+    ip->max_scale = 100; // Max scaling factor
     ip->lastupdate = 0; // Time of last activity sensor decay / spike update
     ip->scalefactor = 1.0; // Default scaling factor for this cell's AMPA synapses
     ip->goal_activity = -1; // Cell's target activity (MHz i.e. cycles per ms)
@@ -392,6 +394,20 @@ CONSTRUCTOR {
     } else installed=1.0; // set or reset it
     cbsv=0x0;
   }
+  ENDVERBATIM
+}
+
+PROCEDURE resetscaling () {
+  VERBATIM
+  ip = IDP;
+  //     THE PARAMETERS IN THIS 'BLOCK' ARE ASSOCIATED WITH HOMEOSTATIC SYNAPTIC SCAING
+  ip->activity = 0; // Sensor for this cell's recent activity (default 0MHz i.e. cycles per ms)
+  ip->max_err = 0; // Max error value
+  ip->max_scale = 100; // Max scaling factor
+  ip->lastupdate = 0; // Time of last activity sensor decay / spike update
+  ip->scalefactor = 1.0; // Default scaling factor for this cell's AMPA synapses
+  ip->goal_activity = -1; // Cell's target activity (MHz i.e. cycles per ms)
+  ip->activity_integral_err = 0.0; // Integral of cell's activity divergence from target activity
   ENDVERBATIM
 }
 
@@ -444,6 +460,7 @@ VERBATIM
   activityoneovertau = 1.0 / activitytau; //@
 
 ENDVERBATIM
+  : resetscaling()
 }
 
 PROCEDURE reset () {
@@ -986,7 +1003,10 @@ ENDVERBATIM
     }
     if (WEX!=-1e9) { : code for single shock
       randspk() : will set WEX for next time
-      if (nxt>0) { net_send(nxt,2) }
+VERBATIM
+      if (ip->input) 
+ENDVERBATIM
+{ net_send(nxt,2) } 
     }
   } else if (flag==3) { 
     refractory = 0 :end of absolute refractory period    
@@ -1277,7 +1297,7 @@ PROCEDURE callback (fl) {
     if (jp->sprob[i]) (*pnt_receive[jp->dvi[i]->_prop->_type])(jp->dvi[i], wts, idtflg); 
     _p=upnt->_prop->param; _ppvar=upnt->_prop->dparam; // restore pointers
     i++;
-    if (i>=jp->dvt) return; // ran out
+    if (i>=jp->dvt) return 0; // ran out
     ddel=jp->del[i]-del0;   // delays are relative to event; use difference in delays
   }
   // skip over pruned outputs and dead cells:
@@ -1301,7 +1321,7 @@ VERBATIM {
   int i,j,k,prty,poty,dv,dvt,dvii; double *x, *db, *dbs; 
   Object *lb;  Point_process *pnnt, **da, **das;
   ip=IDP; pg=ip->pg;//this should only be called after jitcondiv()
-  if (ip->dead) return;
+  if (ip->dead) return 0;
   prty=ip->type;
   sead=GetDVIDSeedVal(ip->id);//seed for divergence and delays
   for (i=0,k=0,dvt=0;i<CTYN;i++) { // dvt gives total divergence
@@ -1424,7 +1444,7 @@ FUNCTION getdvi () {
     void* voi, *voi2,*voi3; Point_process **das;
     ip=IDP; pg=ip->pg;
     getactive=a2=a3=a4=0;
-    if (ip->dead) return;
+    if (ip->dead) return 0.0;
     dvt=ip->dvt; 
     dbs=ip->del;   das=ip->dvi;
     _lgetdvi=(double)dvt; 
@@ -1706,39 +1726,53 @@ PROCEDURE clrdvi () {
     if (qp->dvt!=0x0) {
       free(qp->dvi); free(qp->del); free(qp->sprob);
       qp->dvt=0; qp->dvi=(Point_process**)0x0; qp->del=(double*)0x0; qp->sprob=(char *)0x0;
+      if(wsetting==1) freesywv(qp);
     }
   }
   ENDVERBATIM
 }
 
-: int.setdviv(prevec,postvec,delvec)
-FUNCTION setdviv () {
+: int.setdviv(prevec,postvec,delvec,distal,wt1,wt2)
+PROCEDURE setdviv () {
   VERBATIM
-  int i,j,k,l,nprv,dvt; double *prv,*pov,*dlv,x,*ds; char* s;
+  int i,j,k,l,nprv,dvt,*scr; double *prv,*pov,*dlv,x,*ds,*w1,*w2; char* s;
   ip=IDP; pg=ip->pg;
   nprv=vector_arg_px(1, &prv);
   i=vector_arg_px(2, &pov);
   j=vector_arg_px(3, &dlv);
-  s-0x0;
-  if(ifarg(4)) { s=(char*)calloc((l=vector_arg_px(4,&ds)),sizeof(char)); for(k=0;k<l;k++) s[k]=ds[k]; k=0;}
-  if (nprv!=i || i!=j) {printf("intf:setdviv ERRA: %d %d %d\n",nprv,i,j); hxe();}
+  if(ifarg(4)) { s=(char*)calloc((l=vector_arg_px(4,&ds)),sizeof(char)); for(k=0;k<l;k++) s[k]=ds[k]; k=0;
+  } else s=0x0;
+  if (nprv!=i || i!=j || j!=l) {printf("intf:setdviv ERRA: %d %d %d %d\n",nprv,i,j,l); hxe();}
+  if (wsetting==1) {
+    i=vector_arg_px(5, &w1);
+    j=vector_arg_px(6, &w2);
+    if (nprv!=i || i!=j) {printf("intf:setdviv ERRB: %d %d %d\n",nprv,i,j); hxe();}
+  }
   // start by counting the prids so will know the size that we need for realloc()
-  if (scrsz<pg->cesz) scrset(pg->cesz); 
+  scr=(int *)ecalloc(pg->cesz, sizeof(int));
   for (i=0;i<pg->cesz;i++) scr[i]=0;
   for (i=0,j=-1;i<nprv;i++) {
-    if (j>(int)prv[i]){printf("intf:setdviv ERRA vecs should be sorted by prid vec\n");hxe();}
+    if ((int)prv[i]<j) { printf("intf:setdviv ERRC vecs should be sorted by prid vec\n");hxe(); }
     j=(int)prv[i];
     scr[j]++;
   }
-  for (i=0,x=-1,k=0;i<nprv;i+=dvt) { if(i%1000==0) printf(".");
-    if (prv[i]!=x) lop(pg->ce,(unsigned int)(x=prv[i]));
+  if (ip->dbx>1) for (i=0;i<pg->cesz;i++) printf("%d ",scr[i]);
+  for (i=-1,k=0;k<nprv;k+=dvt) { if(i%1000==0) printf(".");
+    if ((int)prv[k]==i) {printf("intf:setdviv ERRD number repeated %g %d %d\n",prv[k],i,k);hxe();}
+    i=(int)prv[k]; // index for presyn cell
+    lop(pg->ce,i); // set the container to that cell
+    dvt=scr[i]; // the number of postsyns for that
+    if (ip->dbx>0) printf("DBA:%d,%d,%d ",i,dvt,k);
     if (qp->dead) continue;
-    dvt=scr[(int)x]; // number of these presyns
-    setdvi2(pov+k,dlv+k,s?s+k:0x0,dvt,1,0x0,0x0);
-    k+=dvt;
+    if (dvt>0) {
+      if (wsetting==1) {
+        setdvi3(pov+k,dlv+k,s+k,dvt,w1+k,w2+k); // no flag -- will just replace the divergence list
+      } else {
+        setdvi2(pov+k,dlv+k,s?s+k:0x0,dvt,1,0x0,0x0);
+      }
+    }
   }
   if(s) free(s);
-  return (double)k;
   ENDVERBATIM
 }
 
@@ -2159,9 +2193,9 @@ FUNCTION getplast () {
 PROCEDURE setdvi () {
 VERBATIM {
   int i,j,k,dvt,flag; double *d, *y, *ds, *w1, *w2; char* s;
-  if (! ifarg(1)) {printf("setdvi(v1,v2[,v3,flag]): v1:cell#s; v2:delays; v3:distal synapses\n"); return; }
+  if (! ifarg(1)) {printf("setdvi(v1,v2[,v3,flag]): v1:cell#s; v2:delays; v3:distal synapses\n"); return 0; }
   ip=IDP; pg=ip->pg; // this should only be called after jitcondiv()
-  if (ip->dead) return;
+  if (ip->dead) return 0;
   dvt=vector_arg_px(1, &y);
   i=vector_arg_px(2, &d);
   s=ifarg(3)?(char*)calloc((j=vector_arg_px(3,&ds)),sizeof(char)):0x0;
@@ -2178,7 +2212,7 @@ ENDVERBATIM
 }
 
 VERBATIM
-// setdvi2(divid_vec,del_vec,syns_vec,div_cnt,flag)
+// setdvi2(divid_vec,del_vec,syns_vec,div_cnt,flag,w1,w2)
 // flag 1 means just augment, 0or2: sort by del, 0: clear lists and replace
 static int setdvi2 (double *y,double *d,char* s,int dvt,int flag,double* w1,double* w2) {
   int i,j,ddvi; double *db, *dbs, *w1s, *w2s; unsigned char pdead; unsigned int b,e; char* syns;
@@ -2245,6 +2279,36 @@ static int setdvi2 (double *y,double *d,char* s,int dvt,int flag,double* w1,doub
 }
 ENDVERBATIM
 
+VERBATIM
+// setdvi3(divid_vec,del_vec,syns_vec,div_cnt,w1,w2)
+// based on setdvi2() but uses qp statt IDP and does reallocs
+static int setdvi3 (double *y, double *d, char* s, int dvt, double* w1, double* w2) {
+  int i,j,ddvi; double *db, *dbs, *w1s, *w2s; unsigned char pdead; unsigned int b,e; char* syns;
+  Object *lb; Point_process *pnnt, **da, **das;
+  ddvi=(int)DEAD_DIV;
+  ip=qp; pg=ip->pg;
+  e=dvt; // begin to end
+  da=(Point_process **)realloc((void*)ip->dvi,(size_t)(e*sizeof(Point_process *)));
+  db=(double*)realloc((void*)ip->del,(size_t)(e*sizeof(double)));
+  syns=(char*)realloc((void*)ip->syns,(size_t)(e*sizeof(char)));  
+  w1s=(double*)realloc((void*)ip->syw1,(size_t)(e*sizeof(double)));
+  w2s=(double*)realloc((void*)ip->syw2,(size_t)(e*sizeof(double)));
+  for (i=0,j=0;j<dvt;i++,j++) { // i thru da[] j thru y, k to append
+    // div can grow at lower rate if dead cells are encountered
+    if (!(lb=ivoc_list_item(pg->ce,(unsigned int)y[j]))) {
+      printf("INTF6:callback %g exceeds %d for list ce\n",y[j],pg->cesz); hxe(); }
+      pnnt=(Point_process *)lb->u.this_pointer;
+      if (ddvi==1 || !(pdead=(*(id0**)&(pnnt->_prop->dparam[2]))->dead)) {
+        da[i]=pnnt; db[i]=d[j]; syns[i]=s?s[j]:0; 
+        w1s[i]=w1[j]; w2s[i]=w2[j];
+      }
+  }
+  ip->dvt=dvt; ip->del=db; ip->dvi=da; ip->syns=syns;
+  ip->syw1=w1s; ip->syw2=w2s;
+  finishdvi2(ip); // do sort
+}
+ENDVERBATIM
+
 : prune(p[,potype,rand_seed]) // prune synapses with prob p [0,1], ie 0.1 prunes 10% of the divergence
 : prune(vec) // fill in the pruning vec with binary values from vec
 PROCEDURE prune () {
@@ -2260,7 +2324,7 @@ PROCEDURE prune () {
       printf("INTF6pruneB:Div exceeds dscrsz: %d>%d\n",ip->dvt,dscrsz); hxe(); }
     if (p==0.) {
       for (j=0;j<ip->dvt;j++) ip->sprob[j]=1; // unprune completely
-      return; // now that unpruning is done, can return
+      return 0; // now that unpruning is done, can return
     }
     potype=ifarg(2)?(int)*getarg(2):-1;
     sead=(ifarg(3))?(unsigned int)*getarg(3):GetDVIDSeedVal(ip->id);//seed for divergence and delays
@@ -2366,24 +2430,28 @@ int gsort5 (double *db, Point_process **da, char* syns, double* w1,double* w2, i
     w2s[i]=w2[scr[i]];
   }
 }
+
+static int freedvi2 (struct ID0* jp) {
+  if (jp->dvi) {
+    free(jp->dvi); free(jp->del); free(jp->sprob); free(jp->syns);
+    if(jp->wgain){free(jp->wgain); jp->wgain=0x0;}
+    if(jp->peconv){free(jp->peconv); jp->peconv=0x0;}
+    if(jp->piconv){free(jp->piconv); jp->piconv=0x0;}
+    if(ip->pplasttau){free(ip->pplasttau);ip->pplasttau=0x0;}
+    if(ip->pplastinc){free(ip->pplastinc);ip->pplastinc=0x0;}
+    if(ip->pplastmaxw){free(ip->pplastmaxw);ip->pplastmaxw=0x0;}
+    if(ip->pdope){free(ip->pdope);ip->pdope=0x0;}
+    jp->dvt=0; jp->dvi=(Point_process**)0x0; jp->del=(double*)0x0; jp->sprob=(char *)0x0; jp->syns=(char *)0x0;
+  }
+}
 ENDVERBATIM
 
 PROCEDURE freedvi () {
   VERBATIM
   { 
-    int i, poty; id0 *jp;
+    id0 *jp;
     jp=IDP;
-    if (jp->dvi) {
-      free(jp->dvi); free(jp->del); free(jp->sprob); free(jp->syns);
-      if(jp->wgain){free(jp->wgain); jp->wgain=0x0;}
-      if(jp->peconv){free(jp->peconv); jp->peconv=0x0;}
-      if(jp->piconv){free(jp->piconv); jp->piconv=0x0;}
-      if(ip->pplasttau){free(ip->pplasttau);ip->pplasttau=0x0;}
-      if(ip->pplastinc){free(ip->pplastinc);ip->pplastinc=0x0;}
-      if(ip->pplastmaxw){free(ip->pplastmaxw);ip->pplastmaxw=0x0;}
-      if(ip->pdope){free(ip->pdope);ip->pdope=0x0;}
-      jp->dvt=0; jp->dvi=(Point_process**)0x0; jp->del=(double*)0x0; jp->sprob=(char *)0x0; jp->syns=(char *)0x0;
-    }
+    freedvi2(jp);
   }
   ENDVERBATIM
 }
@@ -2592,7 +2660,7 @@ PROCEDURE jitrec () {
   if(verbose>1) printf("jitrec from col %d, ip=%p, pg=%p\n",ip->col,ip,pg);
   if (! ifarg(2)) { // clear with jitrec() or jitrec(0)
     pg->jrmax=0; pg->jridv=0x0; pg->jrtvv=0x0;
-    return;
+    return 0;
   }
   i =   vector_arg_px(1, &pg->jrid); // could just set up the pointers once
   pg->jrmax=vector_arg_px(2, &pg->jrtv);
@@ -2751,8 +2819,8 @@ PROCEDURE record () {
   VERBATIM {
   int i,j,k,nz; double ti;
   vp = SOP;
-  if(!vp) {printf("**** record ERRA: vp=NULL!\n"); return;}
-  if (tg>=t) return;
+  if(!vp) {printf("**** record ERRA: vp=NULL!\n"); return 0;}
+  if (tg>=t) return 0;
   if (ip->record==1) {
     while ((int)vp->p >= (int)vp->size-(int)((t-tg)/vdt)-10) { 
       vp->size*=2;
@@ -2790,7 +2858,7 @@ PROCEDURE recspk (x) {
   VERBATIM { 
   vp = SOP;
   record();
-  if (vp->p > vp->size || vp->vvo[6]==0) return; 
+  if (vp->p > vp->size || vp->vvo[6]==0) return 0; 
   if (vp->p > 0) {
     if (vp->vvo[0]!=0x0) vp->vvo[0][vp->p-1]=_lx;
     vp->vvo[6][vp->p-1]=spkht; // the spike
@@ -2840,7 +2908,7 @@ PROCEDURE initvspks () {
   {int max, i,err;
     double last,lstt;
     ip=IDP; pg=ip->pg;
-    if (! ifarg(1)) {printf("Return initvspks(ivspks,vspks,wvspks)\n"); return 0.;}
+    if (! ifarg(1)) {printf("Return initvspks(indices,times,weights,syntypes)\n"); return 0.;}
     if(verbose>1) printf("initvspks: col=%d, ip=%p, pg=%p, pg->isp=%p\n",ip->col,ip,pg,pg->isp);
     if (pg->isp!=NULL) clrvspks();
     ip=IDP; pg=ip->pg; err=0;
@@ -2879,13 +2947,14 @@ PROCEDURE initvspks () {
   ENDVERBATIM
 }
 
-:** shock() reads random spike times from save db as initvspks() but just sends a single shock
+:** shock() reads random spike times from same db as initvspks() but just sends a single shock
 : to each listed cell
 : this is a global procedure that calls multiple cells
 PROCEDURE shock () {
   VERBATIM 
   {int max, i,err;
     double last, lstt, *isp, *vsp, *wsp;
+    printf("WARNING: This routine appears to be defunct -- please check code in intf6.mod\n");
     if (! ifarg(1)) {printf("Return shock(ivspks,vspks,wvspks)\n"); return 0.;}
     ip=IDP; pg=ip->pg; err=0;
     i = vector_arg_px(1, &isp); // could just set up the pointers once
@@ -3333,7 +3402,7 @@ PROCEDURE wrecord (te) {
           wwo[wrp][k+j] += scale*_t_Psk[j+max]; // direct copy from the Psk table
         }
       }
-    } else if (twg>=t) { return;
+    } else if (twg>=t) { return 0;
     } else {
       for (ti=twg,k=(int)floor((twg-rebeg)/vdt+0.5);ti<=t && k<wwsz;ti+=vdt,k++) { 
         valps(ti,twg);  // valps() for pop spike calculation
@@ -3511,11 +3580,11 @@ FUNCTION flag () {
   ip=IDP; pg=ip->pg;
   if (FLAG==OK) { // callback -- DO NOT SET FROM HOC
     FLAG=0.;
-    if (stoprun) {slowset=0; return;}
+    if (stoprun) {slowset=0; return 0.0;}
     if (IDP->dbx==-1)printf("slowset fi:%d ix:%d ss:%g delt:%g t:%g\n",fi,ix,slowset,delt,t);
     if (t>slowset || ix>=pg->cesz) {  // done
       printf("Slow-setting of flag %d finished at %g: (%d,%g,%g)\n",fi,t,ix,delt,slowset); 
-      slowset=0.; return;
+      slowset=0.; return 0.0;
     }
     if (ix<pg->cesz) {
       lop(pg->ce,ix);
@@ -3527,12 +3596,12 @@ FUNCTION flag () {
       net_send((void**)0x0, wts,tpnt,delt,OK);
       #endif
     }
-    return;
+    return 0.0;
   }  
   if (slowset>0 && ifarg(3)) {
     printf("INTF6 flag() slowset ERR; attempted set during slowset: fi:%d ix:%d ss:%g delt:%g t:%g",\
            fi,ix,slowset,delt,t); 
-    return;
+    return 0.0;
   }
   ip = IDP; setfl=ifarg(3); 
   if (ifarg(4)) { slowset=*getarg(4); delt=slowset/pg->cesz; slowset+=t; } 
@@ -3704,7 +3773,7 @@ FUNCTION dopelearn () {
   Point_process *pnnt;
   int i , iCell, pot;
   double tmp,maxw,inc,d,tau,pdopet;
-  if(seadsetting!=3.) return; // seadsetting==3 for DOPE, must be set before network setup
+  if(seadsetting!=3.) return 0.0; // seadsetting==3 for DOPE, must be set before network setup
   pot = (int) *getarg(1); // 
   ip=IDP; pg=ip->pg;
   for(iCell=0;iCell<pg->cesz;iCell++){
