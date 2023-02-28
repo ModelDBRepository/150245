@@ -875,6 +875,8 @@ proc convwire () { local x,y,z,ii,jj,a,del,prid,prty,poid,poty,cv,cvt,dv,dvt,lse
     for prty=0,CTYPi-1 if (col.numc[prty]!=0 && (cv=int(col.conv[prty][poty]))>0){//go thru presynaptic types
       vrsz(MAXxy(2*cv,4*col.numc[prty]),v1,v2,v3)                
       {rdm.discunif(col.ix[prty],col.ixe[prty]) v3.setrand(rdm)}
+      // 2023-02-28: the use of an unitialised value of prid was causing inconsistent results between different versions of NEURON
+      prid = 0
       if(prty==poty) {v1.cull(v3,prid) v3.copy(v1) v2.resize(v3.size)} // get rid of self connect -- NB: prid wasn't set!! bug--fixit (poid==prid anyway)    
       if( (cnt=v3.uniq(l,1)) > cv){ cnt = cv } // puts unsorted uniq vals into v4
       vrsz(cnt,v2,v4,v5,v6,v7) // v4 has prids
