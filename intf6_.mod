@@ -2579,7 +2579,9 @@ PROCEDURE cinit () {
   printf("Checking for possible seg error in double arrays: CTYPi==%d: ",CTYPi);
   printf("%d %g\n",dscrsz,dscr[dscrsz-1]); // scratch area for doubles
   for (i=0,j=0;i<CTYPi;i++) if (ctt(i,&name)!=0) {
-    cty[j]=i; CNAME[j]=name; ctymap[i]=j;
+    cty[j]=i;
+    CNAME[j]=strdup(name);
+    ctymap[i]=j;
     j++;
     if (j>=CTYPp) {printf("jitcondiv() INTERRA\n"); hxe();}
   }
@@ -2651,7 +2653,9 @@ PROCEDURE jitcondiv () {
   printf("%g %g ",DELM(CTYPi-1,CTYPi-1),DELD(CTYPi-1,CTYPi-1));
   printf("%d %g\n",dscrsz,dscr[dscrsz-1]); // scratch area for doubles
   for (i=0,j=0;i<CTYPi;i++) if (ctt(i,&name)!=0) {
-    cty[j]=i; CNAME[j]=name; ctymap[i]=j;
+    cty[j]=i;
+    CNAME[j]=strdup(name);
+    ctymap[i]=j;
     j++;
     if (j>=CTYPp) {printf("jitcondiv() INTERRA\n"); hxe();}
   }
