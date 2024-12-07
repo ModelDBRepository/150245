@@ -1256,7 +1256,7 @@ VERBATIM {
   clk=clock()-savclock; savclock=clock();
   if (cbsv) hoc_call_func(cbsv,0);
   if (tf) fprintf(tf,"t=%.02f;%ld(%g) ",t,pg->jri,clk/1e6); else {
-    printf("t=%.02f;%ld(%g) ",t,pg->jri,clk/1e6); }
+    printf("t=%.02f;%ld ",t,pg->jri); }
   for (i=0;i<CTYN;i++) {
     ix=cty[i];
     pg->spktot+=spikes[ix];

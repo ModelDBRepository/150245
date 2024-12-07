@@ -636,7 +636,7 @@ proc initArmCB () { local i
     LearnON()
   } else LearnOFF()
   APHASE=AMOVE
-  if(DoRDM) ardm.ACG(aseed)
+  if(DoRDM) ardm.Random123(aseed)
   if(DoLearn==1) cvode.event(MoveDur,"resetPhase()")    
   SUBPHASE=0
   if(syDT>0) {nqsdel(nqsy) nqsy=new NQS("id1","id2","wg","t") cvode.event(syDT,"svsywts()")}
@@ -857,7 +857,7 @@ proc NRTrain () { local i,j,dur,noisemax,noisemin,noisedec
 // performs training with random starting positions
 proc RandTrain () { local nlocs,i,j,dur,niter,se localobj rdm
   nlocs=$1 niter=$2 dur=$3 if(numarg()>2)se=$3 else se=213951 resetplast_INTF6=0
-  rdm=new Random() rdm.ACG(se)
+  rdm=new Random() rdm.Random123(se)
   tstop = dur
   for i=0,nlocs-1 {
     print "location number " , i

@@ -16,10 +16,10 @@ proc init () {
   avg=$1 shape=$2
   if(numarg()>2)seed=$3 else seed=1234
   rd=new Random()
-  rd.ACG(seed)
+  rd.Random123(seed)
 }
 proc reset () {
-  rd.ACG(seed)
+  rd.Random123(seed)
 }
 func paretoc () { local scale,shape,U
   scale=$1 shape=$2 U = rd.uniform(0,1)
@@ -131,7 +131,7 @@ obfunc nhppvec () { local i,dt,tt,maxt,maxi,se,tidx localobj tvec,ivec,rdm
   ivec=$o1 dt=$2 maxt=$3
   if(numarg()>3)se=$4 else se=1234
   rdm=new Random()
-  rdm.ACG(se)
+  rdm.Random123(se)
   tt=0
   maxi=ivec.max
   while(tt<maxt) {

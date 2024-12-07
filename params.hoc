@@ -35,7 +35,7 @@ if(!autotune) if(useSTDP) seadsetting_INTF6 = 3 // plasticity on
 
 declare("fih","o[1]","nstim","o[1]")
 vseed_stats(223481)
-rdm.MCellRan4(seed_stats)
+rdm.Random123(seed_stats)
 
 //* IREparams - setup IRE cells
 proc IREparams () { local ii,jj localobj xo,co

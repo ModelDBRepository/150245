@@ -572,7 +572,7 @@ proc swirecut () { local x,y,z,ii,jj,a,del,prid,poid,prty,poty,dv,lseed,h,prob,s
   }
   slambdasq = slambda^2 // using squared distance
   vrsz(1e4,vidx,vdel,vdist,vtmp)
-  rdm=new Random() rdm.ACG(lseed) // initdivrnd(lseed)//initialize random # generator
+  rdm=new Random() rdm.Random123(lseed) // initdivrnd(lseed)//initialize random # generator
   rdm.uniform(0,1) vprob.resize(ce.count^2) vprob.setrand(rdm) pdx=0
   // Create the connectivity NQS table.
   if(col.mknetnqss) {nqsdel(col.connsnq) col.connsnq=new NQS("id1","id2","del","dist","wt1","wt2")}
@@ -640,7 +640,7 @@ proc swirecutfl () { local x,y,z,ii,jj,a,del,prid,poid,prty,poty,dv,lseed,h,\
   col=$o1 ce=col.ce EEsq=$2 EIsq=$3 IEsq=$4 IIsq=$5
   if (argtype(6)==0) lseed=$6 else lseed=1234  
   vrsz(1e4,vidx,vdel,vdist,vtmp,vpre)
-  rdm=new Random() rdm.ACG(lseed) // initdivrnd(lseed)//initialize random # generator
+  rdm=new Random() rdm.Random123(lseed) // initdivrnd(lseed)//initialize random # generator
   rdm.uniform(0,1) rsz=ce.count^2 vprob.resize(rsz) vprob.setrand(rdm) pdx=0
   {mmaxd.x(0,0)=sqrt(EEsq) mmaxd.x(0,1)=sqrt(EIsq) mmaxd.x(1,0)=sqrt(IEsq) mmaxd.x(1,1)=sqrt(IIsq)}
   // Create the connectivity NQS table.
@@ -701,7 +701,7 @@ proc swireDPs () { local x,y,z,ii,jj,a,n,del,prid,poid,prty,poty,dv,lseed,prob,i
   cdx=0
   cl=col[cdx] lce=cl.ce
   if (argtype(1)==0) lseed=$1 else lseed=1234  
-  rdm=new Random() rdm.ACG(lseed) // initdivrnd(lseed)//initialize random # generator
+  rdm=new Random() rdm.Random123(lseed) // initdivrnd(lseed)//initialize random # generator
   rdm.uniform(0,1) vprob.resize(rsz=lce.count^2) vprob.setrand(rdm) pdx=0
   vpoty.append(ES)
   //** wire in the DPs
@@ -753,7 +753,7 @@ proc wireDPs () { local x,y,z,ii,jj,a,n,del,prid,poid,prty,poty,dv,lseed,cdx,cv,
   cdx=0
   cl=col[cdx] lce=cl.ce
   if (argtype(1)==0) lseed=$1 else lseed=1234  
-  rdm=new Random() rdm.ACG(lseed) // initdivrnd(lseed)//initialize random # generator
+  rdm=new Random() rdm.Random123(lseed) // initdivrnd(lseed)//initialize random # generator
   rdm.uniform(0,1)
   vpoty.append(ES)
   //** wire in the DPs
@@ -793,7 +793,7 @@ proc wireDPs () { local x,y,z,ii,jj,a,n,del,prid,poid,prty,poty,dv,lseed,cdx,cv,
 //* checkerpos(col,rad,xinc,yinc,seed) - arrange cells in checkerboard pattern
 proc checkerpos () { local i,j,x,y,csz,xinc,yinc,seed,rad,a localobj col,ce,rdm,xo,nqc
   col=$o1 csz=col.cside rad=$2 xinc=$3 yinc=$4 rdm=new Random()
-  if(numarg()>4) seed=$5 else seed=1234 rdm.ACG(seed) ce=col.ce nqc=new NQS("x","y")
+  if(numarg()>4) seed=$5 else seed=1234 rdm.Random123(seed) ce=col.ce nqc=new NQS("x","y")
   for(y=0;y<csz;y+=yinc) {
     if(y%2==0) {
       for(x=0;x<csz;x+=xinc) nqc.append(x,y)
@@ -864,7 +864,7 @@ proc convwire () { local x,y,z,ii,jj,a,del,prid,prty,poid,poty,cv,cvt,dv,dvt,lse
   col=$o1 ce=col.ce
   if (numarg()>1) lseed=$2 else lseed=1234
   vrsz(1e4,vidx,vdel,vdist,vtmp)
-  {rdm=new Random() rdm.MCellRan4(lseed,lseed)}
+  {rdm=new Random() rdm.Random123(lseed,lseed)}
   // Create the connectivity NQS table.
   nqsdel(col.connsnq)
   col.connsnq=new NQS("id1","id2","del","dist","wt1","wt2")
@@ -969,7 +969,7 @@ proc mkDPs () { local ii,x,y,c,ndp,suty,rw,cl,rs,cs,pad,cdx,xinc,yinc\
   ce=col[cdx].ce gid=0
   if(NMUSCLES==4) rs=cs=2 else {rs=1 cs=2} // # rows and columns for DP spatial layout
   for ii=0,col[cdx].numc[DP]-1 cedp.append(new DPC()) // create the DPs
-  rdm=new Random() rdm.ACG(pseed+DP)
+  rdm=new Random() rdm.Random123(pseed+DP)
   if(DPpad) pad=colside/cs/8 else pad=0
   if (col[cdx].cellsnq==nil) c=-1 else { 
     cellsnq=col[cdx].cellsnq cellsnq.tog("DB") c=cellsnq.fi("xloc") 

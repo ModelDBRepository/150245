@@ -9,7 +9,7 @@ rdmthresh_DRSPK = 1
 proc mkstimnq () { local ii,se,a localobj xo,rdm,ind,vr
   if(numarg()>0) se=$1 else se=9658
   {nqsdel(stimnq) stimnq=new NQS("eflex","eext","wflex","wext")}
-  rdm=new Random() rdm.ACG(se) a=allocvecs(ind,vr)
+  rdm=new Random() rdm.Random123(se) a=allocvecs(ind,vr)
   ind.indgen(0,PI/2,0.01)
   for ii=0,10 {stimnq.v[0].append(ind) stimnq.v[0].append(ind.c.reverse)}
   stimnq.v[1].copy(stimnq.v[0])
@@ -34,8 +34,8 @@ proc mkstimnq () { local ii,se,a localobj xo,rdm,ind,vr
 proc setDPrand () { local ii,se,a localobj xo,rdm,vr,vec
   if(numarg()>0) se=$1 else se=9658
   if(rdmthresh_DRSPK) {
-    ldp=new List() rdm=new Random() rdm.ACG(se) rdm.poisson(8)
-  } else {rdm=new Random() rdm.ACG(se)}
+    ldp=new List() rdm=new Random() rdm.Random123(se) rdm.poisson(8)
+  } else {rdm=new Random() rdm.Random123(se)}
   for ltr(xo,cedp,&ii) {
    if(rdmthresh_DRSPK) {
      rdm.normal(25,10)
