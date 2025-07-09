@@ -26,6 +26,8 @@ The trained network run should look like this:
 For questions/comments on the simulation contact:  
 Sam Neymotin (email: samn at neurosim dot downstate dot edu)
 
+---
+
 20130628 A values.h include statement in misc.h was commented out so that the simulation would run on Mac OS X.
 
 20160921 Includes updates from the Lytton lab that allow the model to run on mac OS X.
@@ -35,7 +37,5 @@ Sam Neymotin (email: samn at neurosim dot downstate dot edu)
 20230228 Fix to ensure printed strings are still valid, avoiding junk being printed in [https://github.com/neuronsimulator/nrn-modeldb-ci](https://github.com/neuronsimulator/nrn-modeldb-ci)
 
 20230420 Fixes for compatibility with new data structures in the upcoming version 9.0 of NEURON.
-
----
 
 2025-07-09: Converted README to Markdown.
